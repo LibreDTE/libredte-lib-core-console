@@ -1,7 +1,12 @@
 # Archivos y directorios de PHP.
+#
+# composer.lock SÍ se trackea (a diferencia de una librería): esto es un
+# "project" (una app desplegable), igual que libredte-lib-core-api, que
+# también lo trackea — necesario para que la imagen Docker instale
+# exactamente las mismas versiones resueltas en desarrollo, no lo último
+# que resuelva `composer install` el día del build.
 var/
 vendor/
-composer.lock
 
 # Archivos de caché y directorios temporales.
 .phpunit.result.cache
