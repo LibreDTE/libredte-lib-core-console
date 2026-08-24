@@ -1,0 +1,18 @@
+# Importación de servicios de libredte-lib-core-dispatcher.
+#
+# `libredte\lib\Core\Application` (extendida por `ConsoleApplication`, ver
+# src/ConsoleApplication.php) resuelve su `kernel.project_dir` al root del
+# proyecto de composer cuyo autoloader está activo en tiempo de ejecución
+# — es decir, la raíz de este paquete, ya que es el punto de entrada real
+# (bin/console) — por lo que este archivo, y no el de
+# libredte-lib-core-dispatcher, es el que realmente se carga. Este archivo
+# reenvía la carga al de ese paquete, que a su vez reenvía al de
+# libredte-lib-core, ambos sobreescribiendo `libredte.lib.core.project_dir`
+# lo necesario para que sus recursos (resources/data/repository/*.php) sigan
+# siendo resolubles desde acá — nada que resolver de nuevo en este archivo.
+imports:
+  - { resource: '../vendor/libredte/libredte-lib-core-dispatcher/config/services.yaml' }
+
+parameters:
+    # Nombre mostrado por `bin/console` (encabezado de `list`/`--version`).
+    kernel.app_name: 'LibreDTE Core Console'

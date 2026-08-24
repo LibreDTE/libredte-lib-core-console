@@ -1,0 +1,41 @@
+{
+    "name": "libredte/libredte-lib-core-console",
+    "description": "LibreDTE: Consola para exponer la Biblioteca PHP (Core) como comandos de línea de comandos.",
+    "type": "project",
+    "keywords": ["dte", "lce", "sii", "facturación electrónica", "chile"],
+    "homepage": "https://www.libredte.cl",
+    "license": "AGPL-3.0+",
+    "authors": [{"name": "LibreDTE", "homepage": "https://www.libredte.cl"}],
+    "autoload": {
+        "psr-4": {
+            "libredte\\lib\\CoreConsole\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "libredte\\lib\\TestsCoreConsole\\": "tests/src/"
+        }
+    },
+    "require": {
+        "php": "^8.5",
+        "derafu/backbone-console": "dev-main",
+        "derafu/console": "dev-main",
+        "libredte/libredte-lib-core": "dev-master",
+        "libredte/libredte-lib-core-dispatcher": "dev-main"
+    },
+    "require-dev": {
+        "ext-xdebug": "*",
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^13.2"
+    },
+    "bin": ["bin/console"],
+    "scripts": {
+        "tests": "XDEBUG_MODE=coverage vendor/bin/phpunit --configuration=phpunit.xml",
+        "phpcs-fix": "vendor/bin/php-cs-fixer fix -v --config=php-cs-fixer.php",
+        "phpcs": "vendor/bin/php-cs-fixer fix -v --dry-run --diff --config=php-cs-fixer.php",
+        "phpstan": "vendor/bin/phpstan analyse --configuration=phpstan.neon --memory-limit=1G"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
