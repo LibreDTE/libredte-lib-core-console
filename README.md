@@ -8,8 +8,73 @@ usando [`derafu/backbone-console`](https://github.com/derafu/backbone-console)
 como base. Pensado para invocarse como proceso aparte (`bin/console`) desde
 cualquier lenguaje, o a mano.
 
-Uso
----
+Con Docker (recomendado)
+-------------------------
+
+La imagen no sirve nada por HTTP ni tiene ningún puerto que mapear: el
+proceso principal solo mantiene el contenedor vivo para poder ejecutarle
+comandos puntuales con `docker exec`.
+
+### `docker run`, con la imagen ya publicada
+
+```bash
+docker run -d --name libredte-lib-core-console --restart unless-stopped \
+  ghcr.io/libredte/libredte-lib-core-console:latest
+```
+
+```bash
+docker exec libredte-lib-core-console bin/console list
+docker exec libredte-lib-core-console bin/console help billing:identifier:caf_loader:load
+
+echo '{"parameters": {"xml": "<caf>...</caf>"}}' \
+  | docker exec -i libredte-lib-core-console bin/console billing:identifier:caf_loader:load
+```
+
+`-i` en el `exec` es necesario cuando la entrada va por STDIN (como en el
+`echo` de arriba); para un archivo como argumento no hace falta:
+
+```bash
+docker cp archivo.json libredte-lib-core-console:/tmp/archivo.json
+docker exec libredte-lib-core-console bin/console billing:identifier:caf_loader:load /tmp/archivo.json
+```
+
+Para ver los logs o detenerlo:
+
+```bash
+docker logs -f libredte-lib-core-console
+docker stop libredte-lib-core-console
+```
+
+### Uso único, sin dejar nada corriendo
+
+Sobreescribiendo el `CMD` de la imagen se evita levantar un contenedor
+persistente cuando solo se necesita ejecutar un comando una vez:
+
+```bash
+echo '{"parameters": {"xml": "<caf>...</caf>"}}' \
+  | docker run --rm -i ghcr.io/libredte/libredte-lib-core-console:latest \
+      bin/console billing:identifier:caf_loader:load
+```
+
+### `docker compose`
+
+```bash
+git clone git@github.com:LibreDTE/libredte-lib-core-console.git
+cd libredte-lib-core-console
+docker compose up -d
+
+docker compose exec libredte-lib-core-console bin/console list
+docker compose down
+```
+
+### Construir la imagen localmente
+
+```bash
+docker build -t libredte-lib-core-console .
+```
+
+Sin Docker (desarrollo)
+------------------------
 
 ```bash
 composer install
@@ -57,11 +122,15 @@ y el motivo real por STDERR.
 bin/console -v billing:identifier:caf_loader:load archivo.json
 ```
 
-Sin `-v`/`--verbose` la respuesta es exactamente `{"data": ...}` (éxito) o
-el `ProblemDetail` tal cual (falla) — igual que siempre. Con `-v` se agrega
-`metadata` (éxito) o `extensions.metadata` (falla): `startedAt`/
-`finishedAt`/`realTime`/`userTime`/`systemTime`/`memoryUsed`/`peakMemory`/
-`pid`/`loadAverage1Min`/`5Min`/`15Min`.
+La respuesta exitosa siempre viene envuelta en `{"meta": {"timestamp": ...,
+"data_type": ...}, "data": ...}` (mismo formato que
+[Backbone Console](https://www.derafu.dev/docs/core/backbone-console) usa
+para cualquier proyecto Backbone) y una falla es el `ProblemDetail` tal
+cual, con `extensions.timestamp`/`extensions.data_type` incluidos. Sin
+`-v`/`--verbose` eso es todo lo que trae `meta`/`extensions`; con `-v` se
+agrega el resto de la metadata de ejecución ahí mismo (nunca una clave
+nueva): `startedAt`/`finishedAt`/`realTime`/`userTime`/`systemTime`/
+`memoryUsed`/`peakMemory`/`pid`/`loadAverage1Min`/`5Min`/`15Min`.
 
 ### Exit codes
 
@@ -77,56 +146,6 @@ comando. Los fijos (no dependen de la operación):
 | `66` (`EX_NOINPUT`) | El archivo de entrada no existe o no es legible. |
 | `70` (`EX_SOFTWARE`) | Error interno inesperado (bug, no error de uso ni de negocio). |
 | `73` (`EX_CANTCREAT`) | No se pudo crear el archivo de `--output`/`--error-output`. |
-
-Arquitectura
-------------
-
-- `libredte\lib\CoreConsole\ConsoleApplication` extiende directamente
-  `libredte\lib\Core\Application` —igual que hace
-  `libredte\lib\Pro\ConsoleApplication` para su propia consola de
-  desarrollo— y nunca pasa por `Application::getInstance()`: esa clase
-  construye la instancia con `new self(...)` (no `new static(...)`), así
-  que llamar a su `getInstance()` heredado desde una subclase construiría,
-  de forma silenciosa, la clase padre en vez de esta. Por eso siempre se
-  instancia directamente (`new ConsoleApplication(...)`, ver `bin/console`).
-- `use ConsoleKernelTrait` (de `derafu/console`) agrega el ciclo de vida de
-  consola sobre ese Kernel. Como un trait mezcla sus métodos directamente
-  en la clase (no los hereda vía `Application`/`MicroKernel`), sobreescribir
-  `createConsoleApplication()` requiere alias explícito
-  (`createConsoleApplication as private buildBaseConsoleApplication`) para
-  poder llamar a la implementación original del trait — `parent::` no
-  resuelve métodos de un trait.
-- `ConsoleApplication::createConsoleApplication()` instala
-  `Derafu\BackboneConsole\Service\OperationCommandLoader` como
-  `CommandLoaderInterface` de la aplicación de Symfony Console —comandos
-  descubiertos de forma perezosa a partir de `SafeExplorerInterface`, nunca
-  una lista escrita a mano— alimentado por el mismo
-  `SafeExplorerInterface`/`SafeDispatcherInterface` que expone
-  `libredte-lib-core-dispatcher`, y por `libredte\lib\CoreConsole\ExitCodeResolver`
-  (ver abajo) en vez del `DefaultExitCodeResolver` puro.
-- `bin/console` usa `Derafu\Console\Runtime::run()` para resolver
-  `APP_ENV`/`APP_DEBUG` antes de construir el Kernel — nunca lee `$_ENV`
-  directo: esa superglobal solo se puebla si `variables_order` (php.ini)
-  incluye la `E`, algo que no es el default en toda instalación de PHP (ej.
-  Homebrew en macOS trae `GPCS`, sin `E`). `Runtime` mezcla `$_SERVER` y
-  `$_ENV`, y defaultea a `prod`/`false` cuando no hay nada seteado — seguro
-  por default, ya que esta consola no tiene ningún `.env` que pise ese
-  default (a diferencia de una app HTTP típica).
-- `libredte\lib\CoreConsole\ExitCodeResolver` extiende `DefaultExitCodeResolver`
-  (que ya mapea las 7 excepciones genéricas de `derafu/backbone-dispatcher`
-  a códigos `10`–`16`). Es un esqueleto: delega el 100% a `parent::` por
-  ahora, con un `// TODO: Agregar mapeo.` marcando dónde agregar códigos
-  propios para excepciones de negocio de `libredte-lib-core`
-  (`DocumentException`, etc.) el día que se necesiten, sin romper nada de
-  lo ya cableado.
-- `config/services.yaml` solo importa el de `libredte-lib-core-dispatcher`:
-  no declara servicios propios, porque este paquete no agrega ningún
-  Deserializer ni operación nueva, solo expone las que ya existen como
-  comandos. `kernel.project_dir` se resuelve contra el paquete que actúa
-  como punto de entrada, y ese rol lo cumple este paquete cuando se ejecuta
-  `bin/console` — el resto de la cadena de imports (hacia
-  `libredte-lib-core-dispatcher` y de ahí a `libredte-lib-core`) ya
-  sobreescribe `libredte.lib.core.project_dir` en consecuencia.
 
 Desarrollo
 ----------

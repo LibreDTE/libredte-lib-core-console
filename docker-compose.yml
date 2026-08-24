@@ -1,0 +1,5 @@
+services:
+  libredte-lib-core-console:
+    build: .
+    image: ghcr.io/libredte/libredte-lib-core-console:latest
+    restart: unless-stopped
