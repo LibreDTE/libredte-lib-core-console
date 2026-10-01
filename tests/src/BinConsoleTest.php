@@ -108,7 +108,9 @@ final class BinConsoleTest extends TestCase
     {
         $result = $this->runBinConsole(
             ['billing:identifier:caf_loader:load'],
-            '{"parameters": {"xml": "not-a-real-caf"}}',
+            (string) json_encode([
+                'parameters' => ['xml' => base64_encode('not-a-real-caf')],
+            ]),
         );
 
         // XmlParseException (derafu/xml's own) is not one of the 7
@@ -119,5 +121,21 @@ final class BinConsoleTest extends TestCase
         $this->assertSame(1, $result['exitCode']);
         $this->assertSame('', $result['stdout']);
         $this->assertStringContainsString('XmlParseException', $result['stderr']);
+    }
+
+    public function testRejectsXmlThatIsNotBase64(): void
+    {
+        $result = $this->runBinConsole(
+            ['billing:identifier:caf_loader:load'],
+            '{"parameters": {"xml": "not-a-real-caf"}}',
+        );
+
+        // Text content is only accepted in base64: a value that is not valid
+        // base64 is rejected before it reaches the XML parser, and
+        // NoDeserializerFoundException maps to its own exit code (16).
+        $this->assertSame(16, $result['exitCode']);
+        $this->assertSame('', $result['stdout']);
+        $this->assertStringContainsString('NoDeserializerFoundException', $result['stderr']);
+        $this->assertStringContainsString('base64', $result['stderr']);
     }
 }

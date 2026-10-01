@@ -118,7 +118,7 @@ class ConsoleApplicationTest extends TestCase
     public function testFailurePathReturnsANonZeroExitCodeAndAProblemDetailAsJson(): void
     {
         $path = $this->writeTempFile((string) json_encode([
-            'parameters' => ['xml' => 'not-a-real-caf'],
+            'parameters' => ['xml' => base64_encode('not-a-real-caf')],
         ]));
 
         $output = new BufferedOutput();
@@ -135,5 +135,31 @@ class ConsoleApplicationTest extends TestCase
 
         $this->assertSame(1, $exitCode);
         $this->assertSame('billing.identifier.caf_loader::load', $problem['instance']);
+    }
+
+    public function testContenidoQueNoEsBase64SeRechazaConSuPropioCodigoDeSalida(): void
+    {
+        $path = $this->writeTempFile((string) json_encode([
+            'parameters' => ['xml' => 'not-a-real-caf'],
+        ]));
+
+        $output = new BufferedOutput();
+        $exitCode = $this->app->run(
+            new ArrayInput([
+                'command' => 'billing:identifier:caf_loader:load',
+                'input' => $path,
+            ]),
+            $output,
+        );
+        unlink($path);
+
+        $problem = json_decode($output->fetch(), true);
+
+        // El contenido en texto solo se acepta en base64: uno que no lo es se
+        // rechaza antes de llegar al parser de XML.
+        $this->assertSame(16, $exitCode);
+        $this->assertSame('billing.identifier.caf_loader::load', $problem['instance']);
+        $this->assertStringContainsString('NoDeserializerFoundException', $problem['title']);
+        $this->assertStringContainsString('base64', $problem['detail']);
     }
 }
