@@ -1,0 +1,6 @@
+imports:
+    - { resource: '../../../../config/services.yaml' }
+
+services:
+    Derafu\BackboneConsole\Contract\ExitCodeResolverInterface:
+        class: libredte\lib\TestsCoreConsole\Fixture\ConfiguredExitCodeResolver

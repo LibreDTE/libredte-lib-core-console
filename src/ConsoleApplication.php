@@ -24,12 +24,12 @@ declare(strict_types=1);
 
 namespace libredte\lib\CoreConsole;
 
-use Derafu\BackboneConsole\Service\OperationCommandLoader;
-use Derafu\BackboneDispatcher\Contract\SafeDispatcherInterface;
-use Derafu\BackboneDispatcher\Contract\SafeExplorerInterface;
 use Derafu\Console\ConsoleKernelTrait;
+use Derafu\Console\Contract\ConsoleKernelInterface;
+use Derafu\Translation\Exception\Core\TranslatableLogicException as LogicException;
 use libredte\lib\Core\Application;
 use Symfony\Component\Console\Application as SymfonyConsoleApplication;
+use Symfony\Component\Console\CommandLoader\CommandLoaderInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -54,7 +54,7 @@ use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigura
  * de forma perezosa (`CommandLoaderInterface`), nunca una lista de comandos
  * escrita a mano.
  */
-class ConsoleApplication extends Application
+class ConsoleApplication extends Application implements ConsoleKernelInterface
 {
     use ConsoleKernelTrait {
         createConsoleApplication as private buildBaseConsoleApplication;
@@ -87,11 +87,15 @@ class ConsoleApplication extends Application
     ): SymfonyConsoleApplication {
         $application = $this->buildBaseConsoleApplication($container);
 
-        $application->setCommandLoader(new OperationCommandLoader(
-            $container->get(SafeExplorerInterface::class),
-            $container->get(SafeDispatcherInterface::class),
-            exitCodeResolver: new ExitCodeResolver(),
-        ));
+        $loader = $container->get(CommandLoaderInterface::class);
+        if (!$loader instanceof CommandLoaderInterface) {
+            throw new LogicException([
+                'The service {service} must implement {interface}.',
+                'service' => CommandLoaderInterface::class,
+                'interface' => CommandLoaderInterface::class,
+            ]);
+        }
+        $application->setCommandLoader($loader);
 
         return $application;
     }

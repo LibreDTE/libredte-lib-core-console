@@ -1,0 +1,8 @@
+imports:
+    - { resource: '../../../../config/services.yaml' }
+
+# Configuración inválida deliberada: comprobar el diagnóstico al arrancar.
+services:
+    Symfony\Component\Console\CommandLoader\CommandLoaderInterface:
+        class: stdClass
+        public: true

@@ -27,7 +27,6 @@ namespace libredte\lib\TestsCoreConsole;
 use libredte\lib\CoreConsole\ConsoleApplication;
 use libredte\lib\CoreConsole\ExitCodeResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
@@ -44,7 +43,7 @@ use Symfony\Component\Console\Output\BufferedOutput;
  * `libredte-lib-core`, contenedor real, `OperationCommandLoader` real.
  */
 #[CoversClass(ConsoleApplication::class)]
-#[UsesClass(ExitCodeResolver::class)]
+#[CoversClass(ExitCodeResolver::class)]
 class ConsoleApplicationTest extends TestCase
 {
     private ConsoleApplication $app;
@@ -109,6 +108,8 @@ class ConsoleApplicationTest extends TestCase
         unlink($path);
 
         $data = json_decode($output->fetch(), true);
+        $this->assertIsArray($data);
+        $this->assertIsArray($data['data']);
 
         $this->assertSame(0, $exitCode);
         $this->assertSame(33, $data['data']['tipoDocumento']);
@@ -132,6 +133,7 @@ class ConsoleApplicationTest extends TestCase
         unlink($path);
 
         $problem = json_decode($output->fetch(), true);
+        $this->assertIsArray($problem);
 
         $this->assertSame(1, $exitCode);
         $this->assertSame('billing.identifier.caf_loader::load', $problem['instance']);
@@ -154,11 +156,14 @@ class ConsoleApplicationTest extends TestCase
         unlink($path);
 
         $problem = json_decode($output->fetch(), true);
+        $this->assertIsArray($problem);
 
         // El contenido en texto solo se acepta en base64: uno que no lo es se
         // rechaza antes de llegar al parser de XML.
         $this->assertSame(16, $exitCode);
         $this->assertSame('billing.identifier.caf_loader::load', $problem['instance']);
+        $this->assertIsString($problem['title']);
+        $this->assertIsString($problem['detail']);
         $this->assertStringContainsString('NoDeserializerFoundException', $problem['title']);
         $this->assertStringContainsString('base64', $problem['detail']);
     }
