@@ -112,8 +112,8 @@ class ConsoleApplicationTest extends TestCase
         $this->assertIsArray($data['data']);
 
         $this->assertSame(0, $exitCode);
-        $this->assertSame(33, $data['data']['tipoDocumento']);
-        $this->assertSame(10, $data['data']['cantidadFolios']);
+        $this->assertSame(33, $data['data']['tipo_documento']);
+        $this->assertSame(10, $data['data']['cantidad_folios']);
     }
 
     public function testFailurePathReturnsANonZeroExitCodeAndAProblemDetailAsJson(): void
